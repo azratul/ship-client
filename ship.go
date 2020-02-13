@@ -1,6 +1,7 @@
 package ship
 
 import(
+    "bytes"
     "net"
     "strconv"
 )
@@ -52,11 +53,11 @@ func (client *Client) Read() string {
     size := ""
 
     for {
-        len, err := client.Socket.Read(bs)
+        _, err := client.Socket.Read(bs)
         if err != nil {
             panic(err)
         } else {
-            if string(bs[:len]) == "/" {
+            if string(bs) == "/" {
                 cont++
 
                 if cont == 2 {
@@ -69,18 +70,33 @@ func (client *Client) Read() string {
             }
 
             if cont == 2 {
-                size += string(bs[:len])
+                size += string(bs)
             }
         }
     }
 
-    s, _ := strconv.ParseInt(size, 10, 64)
-    bs = make([]byte, s)
-    xml, err := client.Socket.Read(bs)
+    s, _ := strconv.Atoi(size)
+    brk  := 0
+    xml  := ""
 
-    if err != nil {
-        panic(err)
+    bs = make([]byte, s)
+
+    for {
+        ln, err := client.Socket.Read(bs)
+
+        if err != nil {
+            panic(err)
+        }
+
+        brk += ln
+        xml += string(bytes.Trim(bs, "\x00"))
+
+        if brk == s {
+            break
+        }
+
+        bs = make([]byte, (len(bs)-ln))
     }
 
-    return string(bs[:xml])
+    return xml
 }
